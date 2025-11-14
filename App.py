@@ -43,7 +43,6 @@ complain = st.selectbox("Complain Raised in Last Month?", [0, 1], help="0=No, 1=
 
 
 # --- PREDICTION ---
-# --- PREDICTION ---
 if st.button("Predict Churn Risk"):
     
     # 1. Arrange input data in the EXACT SAME ORDER as your list
@@ -60,19 +59,28 @@ if st.button("Predict Churn Risk"):
         cashback
     ]]
     
-    # 2. Scale the data (This will now work as it has 10 features)
+    # 2. Scale the data (This has 10 features)
     scaled_data = scaler.transform(input_data)
     
     # 3. Get Cluster (Unsupervised) - Prediction 1
+    # This model was trained on 10 features
     cluster = kmeans_model.predict(scaled_data)[0]
     st.info(f"This customer belongs to Segment (Cluster): {cluster}")
     
-    # 4. Get Churn Prediction (Supervised) - Prediction 2
-    #    USE THE *SAME* 10-FEATURE scaled_data
-    #    This was the part causing your 11-feature error
+    # 4. === FIX: CREATE THE 11-FEATURE INPUT ===
+    # We must add the predicted 'cluster' as a new feature
+    # We use np.hstack to horizontally stack the arrays
+    # scaled_data is [[f1, f2, ..., f10]]
+    # [[cluster]] is [[c1]]
+    # The result rf_input_data is [[f1, f2, ..., f10, c1]]
     
-    churn_prediction = rf_model.predict(scaled_data)[0]
-    churn_probability = rf_model.predict_proba(scaled_data)[0][1] # Get probability of churn (class 1)
+    rf_input_data = np.hstack((scaled_data, [[cluster]]))
+    
+    # 5. Get Churn Prediction (Supervised) - Prediction 2
+    # This model was trained on 11 features
+    
+    churn_prediction = rf_model.predict(rf_input_data)[0]
+    churn_probability = rf_model.predict_proba(rf_input_data)[0][1] # Get probability of churn (class 1)
     
     st.subheader("Churn Prediction Result")
     
@@ -82,4 +90,3 @@ if st.button("Predict Churn Risk"):
     else:
         st.success(f"Low Churn Risk (Prediction: 0)")
         st.write(f"**Probability of Churn: {churn_probability * 100:.2f}%**")
-}
