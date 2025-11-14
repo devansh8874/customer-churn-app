@@ -17,34 +17,58 @@ and **Supervised Learning (Random Forest)** to predict churn risk.
 """)
 
 # --- INPUTS ---
-# Ensure these match the columns used during training!
+# We must create an input for ALL 10 features from your list
+st.subheader("Customer Details")
 tenure = st.number_input("Tenure (Months)", min_value=0)
-warehouse_dist = st.number_input("Distance from Warehouse", min_value=0)
-complain = st.selectbox("Complain Raised?", [0, 1])
-day_since_order = st.number_input("Days Since Last Order", min_value=0)
+warehouse_to_home = st.number_input("Warehouse to Home Distance (km)", min_value=0)
+num_devices = st.number_input("Number of Devices Registered", min_value=0, step=1)
+num_address = st.number_input("Number of Addresses", min_value=1, step=1)
+
+st.subheader("Order & Satisfaction Details")
+# Note: You may need to adjust the options for these select boxes
+# based on what values are in your dataset
+prefered_order_cat = st.selectbox("Preferred Order Category (Encoded)", [0, 1, 2, 3, 4, 5]) 
+satisfaction_score = st.selectbox("Satisfaction Score", [1, 2, 3, 4, 5])
+day_since_last_order = st.number_input("Days Since Last Order", min_value=0, step=1)
 cashback = st.number_input("Cashback Amount", min_value=0.0)
 
-# If you had more columns in your training data, add them here...
+st.subheader("Profile Details")
+marital_status = st.selectbox("Marital Status (Encoded)", [0, 1, 2]) # e.g., 0=Single, 1=Married, 2=Divorced
+complain = st.selectbox("Complain Raised in Last Month?", [0, 1]) # 0=No, 1=Yes
+
 
 # --- PREDICTION ---
 if st.button("Predict Churn Risk"):
-    # 1. Arrange input data in the EXACT SAME ORDER as X_train
-    input_data = [[tenure, warehouse_dist, complain, day_since_order, cashback]]
     
-    # 2. Scale the data
+    # 1. Arrange input data in the EXACT SAME ORDER as your list
+    input_data = [[
+        tenure,
+        warehouse_to_home,
+        num_devices,
+        prefered_order_cat,
+        satisfaction_score,
+        marital_status,
+        num_address,
+        complain,
+        day_since_last_order,
+        cashback
+    ]]
+    
+    # 2. Scale the data (This will now work as it has 10 features)
     scaled_data = scaler.transform(input_data)
     
     # 3. Get Cluster (Unsupervised)
     cluster = kmeans_model.predict(scaled_data)[0]
-    st.info(f"Customer belongs to Segment (Cluster): {cluster}")
+    st.info(f"This customer belongs to Segment (Cluster): {cluster}")
     
     # 4. Add Cluster to input data (for Supervised Model)
+    # The RF model was trained on 11 features (the 10 inputs + 1 cluster ID)
     final_input = np.append(input_data, cluster).reshape(1, -1)
     
     # 5. Predict Churn
     prediction = rf_model.predict(final_input)
     
     if prediction[0] == 1:
-        st.error("Prediction: High Risk of Churn! (Likely to leave)")
+        st.error("Prediction: High Risk of Churn! (Customer is likely to leave)")
     else:
-        st.success("Prediction: Low Risk. (Likely to stay)")
+        st.success("Prediction: Low Risk. (Customer is likely to stay)")
