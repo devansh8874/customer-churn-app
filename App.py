@@ -43,6 +43,7 @@ complain = st.selectbox("Complain Raised in Last Month?", [0, 1], help="0=No, 1=
 
 
 # --- PREDICTION ---
+# --- PREDICTION ---
 if st.button("Predict Churn Risk"):
     
     # 1. Arrange input data in the EXACT SAME ORDER as your list
@@ -81,3 +82,4 @@ if st.button("Predict Churn Risk"):
     else:
         st.success(f"Low Churn Risk (Prediction: 0)")
         st.write(f"**Probability of Churn: {churn_probability * 100:.2f}%**")
+}
