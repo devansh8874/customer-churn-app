@@ -4,9 +4,14 @@ import joblib
 import numpy as np
 
 # Load the saved models
-rf_model = joblib.load('random_forest_churn_model.pkl')
-kmeans_model = joblib.load('kmeans_cluster_model.pkl')
-scaler = joblib.load('scaler.pkl')
+try:
+    rf_model = joblib.load('random_forest_churn_model.pkl')
+    kmeans_model = joblib.load('kmeans_cluster_model.pkl')
+    scaler = joblib.load('scaler.pkl')
+except FileNotFoundError:
+    st.error("Model files not found! Please make sure .pkl files are in the same directory.")
+    st.stop()
+
 
 st.title("Customer Churn Prediction App")
 
@@ -33,8 +38,8 @@ day_since_last_order = st.number_input("Days Since Last Order", min_value=0, ste
 cashback = st.number_input("Cashback Amount", min_value=0.0)
 
 st.subheader("Profile Details")
-marital_status = st.selectbox("Marital Status (Encoded)", [0, 1, 2]) # e.g., 0=Single, 1=Married, 2=Divorced
-complain = st.selectbox("Complain Raised in Last Month?", [0, 1]) # 0=No, 1=Yes
+marital_status = st.selectbox("Marital Status (Encoded)", [0, 1, 2], help="0=Single, 1=Married, 2=Divorced/Other")
+complain = st.selectbox("Complain Raised in Last Month?", [0, 1], help="0=No, 1=Yes")
 
 
 # --- PREDICTION ---
@@ -57,18 +62,22 @@ if st.button("Predict Churn Risk"):
     # 2. Scale the data (This will now work as it has 10 features)
     scaled_data = scaler.transform(input_data)
     
-    # 3. Get Cluster (Unsupervised)
+    # 3. Get Cluster (Unsupervised) - Prediction 1
     cluster = kmeans_model.predict(scaled_data)[0]
     st.info(f"This customer belongs to Segment (Cluster): {cluster}")
     
-    # 4. Add Cluster to input data (for Supervised Model)
-    # The RF model was trained on 11 features (the 10 inputs + 1 cluster ID)
-    final_input = np.append(input_data, cluster).reshape(1, -1)
+    # 4. Get Churn Prediction (Supervised) - Prediction 2
+    #    USE THE *SAME* 10-FEATURE scaled_data
+    #    This was the part causing your 11-feature error
     
-    # 5. Predict Churn
-    prediction = rf_model.predict(final_input)
+    churn_prediction = rf_model.predict(scaled_data)[0]
+    churn_probability = rf_model.predict_proba(scaled_data)[0][1] # Get probability of churn (class 1)
     
-    if prediction[0] == 1:
-        st.error("Prediction: High Risk of Churn! (Customer is likely to leave)")
+    st.subheader("Churn Prediction Result")
+    
+    if churn_prediction == 1:
+        st.error(f"High Churn Risk (Prediction: 1)")
+        st.write(f"**Probability of Churn: {churn_probability * 100:.2f}%**")
     else:
-        st.success("Prediction: Low Risk. (Customer is likely to stay)")
+        st.success(f"Low Churn Risk (Prediction: 0)")
+        st.write(f"**Probability of Churn: {churn_probability * 100:.2f}%**")
